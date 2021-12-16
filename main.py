@@ -2,16 +2,14 @@ import cv2 #opencv-python 모듈
 import keyboard as keyboard
 import mediapipe as mp #핸드트랙킹 위한 머신러닝 모듈
 import time #시간모듈
-import cvzone
 import numpy as np
-
 from PIL import ImageFont, ImageDraw, Image
 import math
-import tkinter
 
 max_num_hands=1 #최대 감지 가능한 손 입력/수어 인식하려면 2/지문자 인식하려면 1로 해야한다.
 
 cap = cv2.VideoCapture(1)
+
 #웹캠 장치 번호 0은 노트북 1은 따로 연결한 웹캠
 cap.set(3,1280)
 cap.set(4,720)
@@ -23,7 +21,6 @@ hands = mpHands.Hands(
     min_detection_confidence=0.5,
     min_tracking_confidence=0.5
 )
-
 f=open('test.txt','w')
 #제스쳐 인식 모델
 file=np.genfromtxt('C:/images/dataSetplus.txt', delimiter=',') #dataSet.txt 학습데이터 각도들(0.33425634, 0.35231345,.0.135277 --- 0.0000) 마지막 수가 라벨
@@ -37,18 +34,19 @@ knn.train(angle,cv2.ml.ROW_SAMPLE,label)
 startTime = time.time()
 prev_index=0
 sentence=''
-recognizeDelay=3
+recognizeDelay=4
 text =''
 
 #우선 한국 지문자만.
 #제스처 데이터들 관절 각도랑 각각 라벨 'ㄱ' 'ㄴ' ... 라벨
 gesture = { 0:'ㄱ', 1:'ㄴ', 2:'ㄷ', 3:'ㄹ', 4:'ㅁ', 5:'ㅂ', 6:'ㅅ', 7:'ㅇ', 8:'ㅈ', 9:'ㅊ', 10:'ㅋ', 11:'ㅌ', 12:'ㅍ',
             13:'ㅎ', 14:'ㅏ', 15:'ㅑ', 16:'ㅓ', 17:'ㅕ', 18:'ㅡ', 19:'ㅣ', 20:'ㅐ', 21:'ㅔ', 22:'ㅚ', 23:'ㅟ', 24:'ㅒ',
-            25:'ㅖ', 26:'ㅢ', 27:'ㅗ', 28:'ㅛ', 29:'ㅜ ', 30:'ㅠ', 31:'삭제', 32:'띄어쓰기'} #27~30 은 시간 차이나 버튼으로 해결하면 괜찮을 듯.
+            25:'ㅖ', 26:'ㅢ', 27:'ㅗ', 28:'ㅛ', 29:'ㅜ ', 30:'ㅠ', 31:'!'} #27~30 은 시간 차이나 버튼으로 해결하면 괜찮을 듯.
 #gesture_up={0:'된소리', 2:'ㄸ', 1:'ㄲ', 3:'ㅃ', 4:'ㅆ', 5:'ㅉ'}
 #gestrue_eng={0:'a', 1:'b', 2:'c', 3:'d', 4:'e', 5:'f', 6:'g', 7:'h', 8:'i', 9:'j', 10:'k', 11:'l', 12:'m', 13:'n', 14:'o', 15:'p', 16:'q', 17:'r', 18:'s', 19:'t', 20:'u', 21:'v', 22:'w', 23:'x', 24:'y', 25:'z'}
 
-setfont = ImageFont.truetype("C:/Users/ahn26/Downloads/SCDream6.otf", 40)
+
+setfont = ImageFont.truetype("C:/Users/ahn26/Downloads/SCDream6.otf", 35)
 class Button:
     def __init__(self, pos, width,height, value):
         self.pos = pos
@@ -58,12 +56,13 @@ class Button:
     def draw_o(self, img):
         cv2.rectangle(img, self.pos, (self.pos[0]+self.width, self.pos[1]+self.height),(165,208,229), cv2.FILLED)
         cv2.rectangle(img, self.pos, (self.pos[0] + self.width, self.pos[1] + self.height),(81,94,115), 3)
-        cv2.putText(img, self.value, (self.pos[0] + 10, self.pos[1] + 40), cv2.FONT_HERSHEY_PLAIN, 1, (0,0,0), 2)
+        cv2.putText(img, self.value, (self.pos[0] + 15, self.pos[1] + 25), cv2.FONT_HERSHEY_PLAIN, 1, (0,0,0), 2)
 
-button1 = Button((1000,160),80,80,'Space')
-button2 = Button((1090,160),80,80,'Clear')
+button1 = Button((20,20),80,40,'Space')
+button2 = Button((110,20),80,40,'Clear')
 while True:
-    success, img = cap.read() #열려있는 한 프레임씩 읽어온다.
+    success, img = cap.read()
+     #열려있는 한 프레임씩 읽어온다.
     button1.draw_o(img)
     button2.draw_o(img)
     if not success:
@@ -119,60 +118,56 @@ while True:
             ret, results,neighbours,dist = knn.findNearest(data,3)
             index = int(results[0][0])
             if index in gesture.keys():
+                if index == 15 or index == 30:
+                    if (sc_point_y > 360):
+                        index = 30
+                    else:
+                        index = 15
+                elif index == 6 or index == 28:
+                    if (length < 10):
+                        index = 28
+                    else:
+                        index = 6
+                elif index == 14 or index==27 or index==0:
+                    if(joint[8][0]<joint[20][0]):
+                        index=27
+                    elif(joint[8][0]<joint[4][0]):
+                        index=0
+                    else:
+                        index=14
+
                 if index != prev_index: #앞에 인덱스랑 다르면 초기화
                     startTime = time.time()
                     prev_index = index
                 else:
                     if time.time()-startTime>recognizeDelay:
-                        if (1000<sc_point_x<1080)&(160<sc_point_y<320):
+                        if (20<sc_point_x<100)&(20<sc_point_y<100):
                             sentence += '_'
-                            cv2.circle(img, (1040,100), 10, (165,208,229), cv2.FILLED)
-                            cv2.putText(img,'!',(1040,100),cv2.FONT_HERSHEY_PLAIN ,1, (50, 50, 50), 2) #고민!
-                        elif (1090<sc_point_x<1170)&(160<sc_point_y<320):
+                        elif (110<sc_point_x<190)&(20<sc_point_y<100):
                             sentence = ''
-                            cv2.putText(img, 'wait3!', (1040, 100), cv2.FONT_HERSHEY_PLAIN, 1, (50, 50, 50), 2) #고민!
                         else:
-                            if index==15 or index==30:
-                                if (sc_point_y>360):
-                                    index==30
-                                else:
-                                    index==15
-                            if index==6 or index ==28:
-                                if(length<10):
-                                    index==28
-                                else:
-                                    index==6
                             sentence += gesture[index]
                         startTime = time.time()
-                #cv2.putText(img, gesture[index].upper(), (int(res.landmark[0].x * img.shape[1] - 10), int(res.landmark[0].y * img.shape[0] + 40)),cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 3)
+
                 draw.text((int(res.landmark[0].x*img.shape[1]-10),int(res.landmark[0].y*img.shape[0] + 40)),gesture[index].upper(), font=setfont, fill=(0, 0, 0))
                 img = cv2.cvtColor(np.array(pil_image), cv2.COLOR_BGR2RGB)
-
 
             cv2.rectangle(img, (th_point_x-50, th_point_y-80), (th_point_x+100, th_point_y-40),(165,208,229), cv2.FILLED) #거리 상자 그리기
             cv2.rectangle(img, (th_point_x-50, th_point_y-80), (th_point_x+100, th_point_y-40), (81,94,115), 2) #거리 상자 외곽 그리기
             cv2.putText(img, str(round(length, 6)), (th_point_x-40, th_point_y-50), cv2.FONT_HERSHEY_PLAIN,1.5 ,(70,72,77), 2) #중지-검지 거리 표시
-            cv2.circle(img, (th_point_x, th_point_y),20, (165,208,229), cv2.FILLED) #중지 원 마크 그리기
-            cv2.circle(img, (sc_point_x, sc_point_y), 20, (165,208,229), cv2.FILLED) #검지 원 마크 그리기
+            cv2.circle(img, (th_point_x, th_point_y),15, (165,208,229), cv2.FILLED) #중지 원 마크 그리기
+            cv2.circle(img, (sc_point_x, sc_point_y), 15, (165,208,229), cv2.FILLED) #검지 원 마크 그리기
             cv2.line(img, (sc_point_x,sc_point_y), (th_point_x,th_point_y),(81,94,115),3) #중지-검지 거리 라인
 
             mpDraw.draw_landmarks(img, res, mpHands.HAND_CONNECTIONS) #랜드마크 그리기
 
     #cv2.rectangle(img, (10, 10), (40,30), (81,94,115),2) #딜레이 시간 1 외곽
-    cv2.rectangle(img, (0, 600), (1280, 720), (165, 208, 229), cv2.FILLED)  # 출력창
-    cv2.line(img, (0,600), (1260, 600), (81,94,115), 2) #출력창 외곽선
+    cv2.rectangle(img, (0, 620), (1280, 720), (165, 208, 229), cv2.FILLED)  # 출력창
+    cv2.line(img, (0,620), (1280, 620), (81,94,115), 2) #출력창 외곽선
     pil_image = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
     draw = ImageDraw.Draw(pil_image)
-    draw.text((30, 640), sentence, font=setfont, fill=(159,101,73)) #입력문장 출력하기
+    draw.text((30, 650), sentence, font=setfont, fill=(159,101,73)) #입력문장 출력하기
     img = cv2.cvtColor(np.array(pil_image), cv2.COLOR_BGR2RGB)
-
-    logo =cv2.imread('C:/images/logo.png', cv2.IMREAD_UNCHANGED)
-    logo=cv2.resize(logo,(0,0),None,0.3,0.3)
-
-    hf,wf,cf = logo.shape
-    hb,wb,cb=img.shape
-    img = cvzone.overlayPNG(img,logo, [0, hb-hf])
-
 
     cv2.imshow("SONGUEL", img)
 
